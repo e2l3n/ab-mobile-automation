@@ -15,7 +15,7 @@ except ImportError:
 
 def build(settings):
 
-	__file_path = settings.appid + '.zip';
+	__file_path = settings.appid + '.zip'
 	__search_patterns = ['../*/'+ __file_path , '../**/*/*/'+ __file_path,'../**/*/'+ __file_path, './**/*/'+ __file_path]
 
 	project_files = []
@@ -29,14 +29,26 @@ def build(settings):
 
 	printf('Uploading Package ...')
 	printf('File - ', project_files[0])
-
 	targetUrl = urlparse('{0}/{1}/projects/importProject/{2}'.format(settings.server_api_url, settings.appid, settings.project_name_url_encoded))
-	resp, content = do_post(targetUrl.geturl(), headers=headers, body=open(project_files[0], 'rb'))
+	resp, content = do_post(targetUrl.geturl(), headers=dict_merge(headers, {'Content-Type': 'application/json'}), body=open(project_files[0], 'rb'))
 
-	printf('Building ...')
+	# printf('Building for device ...')
+	result = []
+	# resource = _send_build_request(settings, 'device', headers=dict_merge(headers, {'Content-Type': 'application/json'}))
+	# result.extend(resource)
 
+	printf('Building for simulator ...')
+	resource = _send_build_request(settings, 'simulator', headers=dict_merge(headers, {'Content-Type': 'application/json'}))
+	result.extend(resource)
+
+	printf('Resources: ', result)
+
+	return result
+
+def _send_build_request(settings, type, headers):
 	targetUrl = urlparse('{0}/{1}/build/{2}'.format(settings.server_api_url, settings.appid, settings.project_name_url_encoded))
-	resp, content = do_post(targetUrl.geturl(), headers=dict_merge(headers, {'Content-Type': 'application/json'}), body=json.dumps(settings.configuration['build']))
+	configuration = settings.configuration['build'] if type == 'device' else settings.configuration['build_simulator']
+	resp, content = do_post(targetUrl.geturl(), headers=dict_merge(headers, {'Content-Type': 'application/json'}), body=json.dumps(configuration))
 
 	json_response=json.loads(content)
 
@@ -45,9 +57,6 @@ def build(settings):
 		quit()
 
 	build_result = json_response['ResultsByTarget']['Build']
-
-	resource = list(map(lambda x: { 'url': x['FullPath'], 'platform': x['Platform']}, list(filter(lambda x: x['Disposition'] == 'BuildResult', build_result['Items']))))
-
-	printf('Resources: ', resource)
+	resource = list(map(lambda x: { 'url': x['FullPath'], 'platform': x['Platform'], 'type': type}, list(filter(lambda x: x['Disposition'] == 'BuildResult', build_result['Items']))))
 
 	return resource

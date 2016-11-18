@@ -7,6 +7,7 @@ from modules.helpers import *
 from modules.request_helpers import *
 from modules.build import *
 from modules.tam_publish import *
+from modules.download import *
 
 # print '---------------------------'
 # print 'Number of arguments:', len(sys.argv), 'arguments.'
@@ -16,9 +17,11 @@ from modules.tam_publish import *
 def main(argv):
 
 	settings =  Settings().load_settings(argv)
+	resources = build(settings)
+	device_resources = list(filter(lambda x: x['type'] == 'device', resources))
 
-	upload_tam(settings, { 'Content-Type': 'application/json; charset=UTF-8' }, build(settings))
-
+	upload_tam(settings, { 'Content-Type': 'application/json; charset=UTF-8' }, device_resources)
+	download_resources(resources)
 	printf('DONE')
 
 if __name__ == '__main__':
